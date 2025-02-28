@@ -1,0 +1,10 @@
+.ipynb_checkpoints/
+.DS_Store
+.idea/
+SarimaxAQI.py
+subtest.py
+test.py
+SARIMAX.ipynb
+aqi/
+.cache.sqlite
+aqi/lib/python3.10/site-packages/tensorflow/libtensorflow_cc.2.dylib
