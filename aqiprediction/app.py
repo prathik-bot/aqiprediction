@@ -62,6 +62,8 @@ def live_aqi():
             }, timeout=15,
         ).json()
 
+        if 'hourly' not in weather_resp or 'hourly' not in aq_resp:
+            return jsonify({'error': 'missing hourly key', 'weather_resp': weather_resp, 'aq_resp': aq_resp}), 500
         wh = weather_resp['hourly']
         aqh = aq_resp['hourly']
 
@@ -146,6 +148,8 @@ def forecast_7day():
             }, timeout=15,
         ).json()
 
+        if 'hourly' not in weather_resp or 'hourly' not in aq_resp:
+            return jsonify({'error': 'missing hourly key', 'weather_resp': weather_resp, 'aq_resp': aq_resp}), 500
         wh = weather_resp['hourly']
         aqh = aq_resp['hourly']
 
