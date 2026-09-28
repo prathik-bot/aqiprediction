@@ -5,6 +5,7 @@ import requests
 import joblib
 from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
+import time
 from tensorflow.keras.models import load_model
 
 app = Flask(__name__)
@@ -19,6 +20,20 @@ COLS = ['aqi', 'temperature_2m', 'relative_humidity_2m',
 AQI_MIN, AQI_MAX = scaler.data_min_[0], scaler.data_max_[0]
 
 LAT, LON = 37.348497, -121.894898
+
+_CACHE = {}
+_CACHE_TTL = 1800  # 30 minutes
+
+def cached_get(url, params, timeout=15):
+    key = (url, tuple(sorted(params.items())))
+    now = time.time()
+    if key in _CACHE:
+        ts, data = _CACHE[key]
+        if now - ts < _CACHE_TTL:
+            return data
+    resp = requests.get(url, params=params, timeout=timeout).json()
+    _CACHE[key] = (now, resp)
+    return resp
 
 
 def scale_value(col_name, value):
@@ -44,23 +59,23 @@ def live_aqi():
         yesterday = today - timedelta(days=1)
         day_before = today - timedelta(days=2)
 
-        weather_resp = requests.get(
+        weather_resp = cached_get(
             'https://api.open-meteo.com/v1/forecast',
-            params={
+            {
                 'latitude': LAT, 'longitude': LON,
                 'hourly': 'temperature_2m,relative_humidity_2m,wind_speed_10m,pressure_msl,precipitation,cloud_cover',
                 'past_days': 3, 'forecast_days': 1, 'timezone': 'America/Los_Angeles',
-            }, timeout=15,
-        ).json()
+            },
+        )
 
-        aq_resp = requests.get(
+        aq_resp = cached_get(
             'https://air-quality-api.open-meteo.com/v1/air-quality',
-            params={
+            {
                 'latitude': LAT, 'longitude': LON,
                 'hourly': 'pm2_5,us_aqi',
                 'past_days': 3, 'forecast_days': 1, 'timezone': 'America/Los_Angeles',
-            }, timeout=15,
-        ).json()
+            },
+        )
 
         if 'hourly' not in weather_resp or 'hourly' not in aq_resp:
             return jsonify({'error': 'missing hourly key', 'weather_resp': weather_resp, 'aq_resp': aq_resp}), 500
@@ -130,23 +145,23 @@ def forecast_7day():
         tz = ZoneInfo('America/Los_Angeles')
         today = datetime.now(tz).date()
 
-        weather_resp = requests.get(
+        weather_resp = cached_get(
             'https://api.open-meteo.com/v1/forecast',
-            params={
+            {
                 'latitude': LAT, 'longitude': LON,
                 'hourly': 'temperature_2m,relative_humidity_2m,wind_speed_10m,pressure_msl,precipitation,cloud_cover',
                 'past_days': 2, 'forecast_days': 7, 'timezone': 'America/Los_Angeles',
-            }, timeout=15,
-        ).json()
+            },
+        )
 
-        aq_resp = requests.get(
+        aq_resp = cached_get(
             'https://air-quality-api.open-meteo.com/v1/air-quality',
-            params={
+            {
                 'latitude': LAT, 'longitude': LON,
                 'hourly': 'pm2_5,us_aqi',
                 'past_days': 2, 'forecast_days': 7, 'timezone': 'America/Los_Angeles',
-            }, timeout=15,
-        ).json()
+            },
+        )
 
         if 'hourly' not in weather_resp or 'hourly' not in aq_resp:
             return jsonify({'error': 'missing hourly key', 'weather_resp': weather_resp, 'aq_resp': aq_resp}), 500
