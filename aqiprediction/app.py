@@ -6,6 +6,9 @@ import joblib
 from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
 import time
+import tensorflow as tf
+tf.config.threading.set_intra_op_parallelism_threads(1)
+tf.config.threading.set_inter_op_parallelism_threads(1)
 from tensorflow.keras.models import load_model
 
 app = Flask(__name__)
